@@ -1,8 +1,8 @@
 <template>
     <div class="grid">
-        <div v-for="t in store.territories" :key="t.id" class="territory" :style="{ backgroundColor: getColor(t) }"
+        <div v-for="t in store.territories" :key="t.id" class="territory" :style="getTileStyle(t)"
             @click="select(t.id)">
-            <span class="level">{{ t.level }}</span>
+            <!-- <span class="level">{{ t.level }}</span> -->
         </div>
     </div>
 </template>
@@ -11,6 +11,10 @@
 import { useGameStore } from '~/stores/game'
 import { useNuxtApp } from '#app'
 
+// ✅ правильний імпорт
+import kyivTile from '@/assets/images/Kyiv-tile.png'
+import lvivTile from '@/assets/images/Lviv-tile.png'
+
 const store = useGameStore()
 const { $supabase } = useNuxtApp()
 
@@ -18,11 +22,31 @@ const select = (id: string) => {
     store.toggleTerritorySelection(id, $supabase)
 }
 
-const getColor = (t: any) => {
-    const p = store.players.find(p => p.id === t.ownerId)
-    return p ? p.color : '#ddd'
+const getTileStyle = (t: any) => {
+    if (!t.ownerId) {
+        return { backgroundColor: '#ddd' }
+    }
+
+    const playerIndex = store.players.findIndex(
+        p => p.id === t.ownerId
+    )
+
+    if (playerIndex === 0) {
+        return {
+            backgroundImage: `url(${kyivTile})`
+        }
+    }
+
+    if (playerIndex === 1) {
+        return {
+            backgroundImage: `url(${lvivTile})`
+        }
+    }
+
+    return { backgroundColor: '#ddd' }
 }
 </script>
+
 
 <style scoped>
 .grid {
@@ -40,5 +64,16 @@ const getColor = (t: any) => {
     align-items: center;
     justify-content: center;
     cursor: pointer;
+
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.level {
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
 }
 </style>

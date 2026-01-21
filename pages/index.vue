@@ -3,6 +3,7 @@
         <h1>Territory Control</h1>
 
         <input v-model="roomNumber" type="text" placeholder="Введіть код кімнати" />
+        <input v-model="playerName" type="text" placeholder="Ім'я гравця" />
 
         <div class="buttons">
             <button @click="createRoom">Створити нову кімнату</button>
@@ -17,12 +18,18 @@ import { useRouter } from 'vue-router'
 import { useNuxtApp } from '#app'
 
 const roomNumber = ref('')
+const playerName = ref('')
 const router = useRouter()
 const { $supabase } = useNuxtApp()
 
 async function createRoom() {
     if (!roomNumber.value) {
         alert('Введіть код кімнати')
+        return
+    }
+
+    if (!playerName.value) {
+        alert('Введіть ім\'я гравця')
         return
     }
 
@@ -40,8 +47,7 @@ async function createRoom() {
         const { error: playersError } = await $supabase
             .from('players')
             .insert([
-                { name: 'Player 1', color: '#ff6b6b', room_id: room.id },
-                { name: 'Player 2', color: '#4d96ff', room_id: room.id }
+                { name: playerName.value, color: '#ff6b6b', room_id: room.id }
             ])
 
         if (playersError) throw playersError
@@ -72,6 +78,11 @@ async function joinRoom() {
         return
     }
 
+    if (!playerName.value) {
+        alert('Введіть ім\'я гравця')
+        return
+    }
+
     try {
         // Шукаємо кімнату по id
         const { data: room, error: roomError } = await $supabase
@@ -84,6 +95,15 @@ async function joinRoom() {
             alert('Кімната не знайдена')
             return
         }
+
+        const { error: playersError } = await $supabase
+            .from('players')
+            .insert([
+                { name: playerName.value, color: '#ff6b6b', room_id: room.id }
+            ])
+
+        if (playersError) throw playersError
+
 
         router.push(`/room/${room.id}`)
     } catch (err: any) {
