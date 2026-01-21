@@ -6,8 +6,8 @@
             <span v-for="player in store.players" :key="player.id" :style="{
                 color: player.color,
                 fontWeight: store.currentPlayerId === player.id ? 'bold' : 'normal',
-                cursor: 'pointer'
-            }" @click="store.currentPlayerId = player.id">
+                cursor: store.currentPlayerId === player.id ? 'default' : 'not-allowed'
+            }">
                 {{ player.name }}
             </span>
         </div>
@@ -40,7 +40,6 @@ onMounted(async () => {
         .select('*')
         .eq('room_id', roomId)
     store.players = players ?? []
-    store.currentPlayerId = store.players[0]?.id ?? null
 
     // 2️⃣ Підписка на гравців
     const playersSub = subscribeToPlayers($supabase, roomId, (newPlayers) => {

@@ -16,11 +16,14 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNuxtApp } from '#app'
+import { useGameStore } from '~/stores/game'
 
 const roomNumber = ref('')
 const playerName = ref('')
 const router = useRouter()
 const { $supabase } = useNuxtApp()
+const store = useGameStore() // ✅ ВАЖЛИВО
+
 
 async function createRoom() {
     if (!roomNumber.value) {
@@ -43,14 +46,18 @@ async function createRoom() {
 
         if (roomError) throw roomError
 
-        // Додаємо два гравці
-        const { error: playersError } = await $supabase
+        // після insert у players
+        const { data: newPlayer, error: playerError } = await $supabase
             .from('players')
-            .insert([
-                { name: playerName.value, color: '#ff6b6b', room_id: room.id }
-            ])
+            .insert([{ name: playerName.value, color: '#ff6b6b', room_id: room.id }])
+            .select()
+            .single()
 
-        if (playersError) throw playersError
+        if (playerError) throw playerError
+
+        // зберігаємо у store
+        store.currentPlayerId = newPlayer.id
+
 
         // Створюємо території
         const territories = Array.from({ length: 16 }).map((_, i) => ({
@@ -96,13 +103,18 @@ async function joinRoom() {
             return
         }
 
-        const { error: playersError } = await $supabase
+        // після insert у players
+        const { data: newPlayer, error: playerError } = await $supabase
             .from('players')
-            .insert([
-                { name: playerName.value, color: '#ff6b6b', room_id: room.id }
-            ])
+            .insert([{ name: playerName.value, color: '#ff6b6b', room_id: room.id }])
+            .select()
+            .single()
 
-        if (playersError) throw playersError
+        if (playerError) throw playerError
+
+        // зберігаємо у store
+        store.currentPlayerId = newPlayer.id
+
 
 
         router.push(`/room/${room.id}`)
