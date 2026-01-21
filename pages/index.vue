@@ -3,6 +3,7 @@
         <h1>Territory Control</h1>
 
         <input v-model="roomNumber" type="text" placeholder="Введіть код кімнати" />
+        <input v-model="playerName" type="text" placeholder="Ім'я гравця" />
 
         <div class="buttons">
             <button @click="createRoom">Створити нову кімнату</button>
@@ -15,14 +16,23 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNuxtApp } from '#app'
+import { useGameStore } from '~/stores/game'
 
 const roomNumber = ref('')
+const playerName = ref('')
 const router = useRouter()
 const { $supabase } = useNuxtApp()
+const store = useGameStore() // ✅ ВАЖЛИВО
+
 
 async function createRoom() {
     if (!roomNumber.value) {
         alert('Введіть код кімнати')
+        return
+    }
+
+    if (!playerName.value) {
+        alert('Введіть ім\'я гравця')
         return
     }
 
@@ -36,15 +46,18 @@ async function createRoom() {
 
         if (roomError) throw roomError
 
-        // Додаємо два гравці
-        const { error: playersError } = await $supabase
+        // після insert у players
+        const { data: newPlayer, error: playerError } = await $supabase
             .from('players')
-            .insert([
-                { name: 'Player 1', color: '#ff6b6b', room_id: room.id },
-                { name: 'Player 2', color: '#4d96ff', room_id: room.id }
-            ])
+            .insert([{ name: playerName.value, color: '#ff6b6b', room_id: room.id }])
+            .select()
+            .single()
 
-        if (playersError) throw playersError
+        if (playerError) throw playerError
+
+        // зберігаємо у store
+        store.currentPlayerId = newPlayer.id
+
 
         // Створюємо території
         const territories = Array.from({ length: 16 }).map((_, i) => ({
@@ -72,6 +85,11 @@ async function joinRoom() {
         return
     }
 
+    if (!playerName.value) {
+        alert('Введіть ім\'я гравця')
+        return
+    }
+
     try {
         // Шукаємо кімнату по id
         const { data: room, error: roomError } = await $supabase
@@ -84,6 +102,20 @@ async function joinRoom() {
             alert('Кімната не знайдена')
             return
         }
+
+        // після insert у players
+        const { data: newPlayer, error: playerError } = await $supabase
+            .from('players')
+            .insert([{ name: playerName.value, color: '#ff6b6b', room_id: room.id }])
+            .select()
+            .single()
+
+        if (playerError) throw playerError
+
+        // зберігаємо у store
+        store.currentPlayerId = newPlayer.id
+
+
 
         router.push(`/room/${room.id}`)
     } catch (err: any) {

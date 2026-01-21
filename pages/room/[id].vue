@@ -6,8 +6,8 @@
             <span v-for="player in store.players" :key="player.id" :style="{
                 color: player.color,
                 fontWeight: store.currentPlayerId === player.id ? 'bold' : 'normal',
-                cursor: 'pointer'
-            }" @click="store.currentPlayerId = player.id">
+                cursor: store.currentPlayerId === player.id ? 'default' : 'not-allowed'
+            }">
                 {{ player.name }}
             </span>
         </div>
@@ -22,7 +22,7 @@ import { useRoute } from 'vue-router'
 import { useNuxtApp } from '#app'
 import { useGameStore } from '~/stores/game'
 import GameField from '~/components/GameField.vue'
-import { subscribeToTerritories } from '~/services/realtime'
+import { subscribeToTerritories, subscribeToPlayers } from '~/services/realtime'
 
 const route = useRoute()
 const store = useGameStore()
@@ -34,37 +34,49 @@ onMounted(async () => {
     const roomId = route.params.id as string
     store.roomId = roomId
 
-    // 1️⃣ гравці
+    // 1️⃣ Завантажуємо гравців
     const { data: players } = await $supabase
         .from('players')
         .select('*')
         .eq('room_id', roomId)
-
     store.players = players ?? []
-    store.currentPlayerId = store.players[0]?.id ?? null
 
-    // 2️⃣ території
+    // 2️⃣ Підписка на гравців
+    const playersSub = subscribeToPlayers($supabase, roomId, (newPlayers) => {
+        newPlayers.forEach(np => {
+            // якщо такого гравця ще немає, додаємо
+            if (!store.players.find(p => p.id === np.id)) {
+                store.players.push(np)
+            }
+        })
+    })
+
+
+    // 3️⃣ Території
     const { data: territories } = await $supabase
         .from('territories')
         .select('*')
         .eq('room_id', roomId)
         .order('position')
-
     store.territories = territories.map(t => ({
         id: t.id,
         ownerId: t.owner_id,
         level: t.level
     }))
 
-    // 3️⃣ realtime
-    subscription = subscribeToTerritories($supabase, roomId, updated => {
+    // 4️⃣ Підписка на території
+    const territoriesSub = subscribeToTerritories($supabase, roomId, updated => {
         const t = store.territories.find(x => x.id === updated.id)
         if (t) t.ownerId = updated.owner_id
     })
+
+    // збережемо підписки щоб потім відписатись
+    subscription = { territoriesSub, playersSub }
 })
 
 onBeforeUnmount(() => {
-    if (subscription) subscription.unsubscribe()
+    if (subscription?.territoriesSub) subscription.territoriesSub.unsubscribe()
+    if (subscription?.playersSub) subscription.playersSub.unsubscribe()
 })
 </script>
 
